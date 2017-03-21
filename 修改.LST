@@ -1,0 +1,378 @@
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE 修改
+OBJECT MODULE PLACED IN 修改.OBJ
+COMPILER INVOKED BY: D:\keil 开发软件\C51\BIN\C51.EXE 修改.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include "reg51.h"
+   2          
+   3          sbit LED_L = P3^2;
+   4          sbit LED_R = P3^3;
+   5          sbit PWM1 = P2^0;//左轮电机驱动使能
+   6          sbit PWM2 = P2^1;//右轮电机驱动使能
+   7          sbit motor_control_1 = P0^0;//左轮前进
+   8          sbit motor_control_2 = P0^1;//左轮后退
+   9          sbit motor_control_3 = P0^2;//右轮前进
+  10          sbit motor_control_4 = P0^3;//右轮后退
+  11          sbit SEV_PWM = P0^7;  //上下舵机信号位
+  12          sbit SEH_PWM = P0^6;  //左右舵机信号位
+  13          
+  14          unsigned char count = 0;
+  15          unsigned char count1 = 0;
+  16          unsigned char count2 = 0;
+  17          unsigned char SEV_count = 3;
+  18          unsigned char SEH_count = 11;
+  19          unsigned char ucBluetoothData;
+  20          
+  21          void initial_myself();
+  22          void initial_peripheral();
+  23          void T0_time();
+  24          void usart_service(void);
+  25          void delay_long(unsigned int uiDelayLong);
+  26          void delay(unsigned int xms);
+  27          void go_forward(void);//前进
+  28          void fall_back(void);//后退
+  29          void turn_left(void);//左转
+  30          void turn_right(void);//右转
+  31          void stop();//刹车
+  32          
+  33          void main()
+  34          {
+  35   1              initial_myself();
+  36   1              delay_long(100);
+  37   1              initial_peripheral();
+  38   1              LED_L =1;
+  39   1              LED_R =1;
+  40   1              while(1)
+  41   1              {
+  42   2                      usart_service();
+  43   2                      
+  44   2                      
+  45   2              
+  46   2              }
+  47   1      
+  48   1      }
+  49          //串口服务函数
+  50          void usart_service()
+  51          {
+  52   1                      
+  53   1                      switch(ucBluetoothData)
+  54   1                      {
+  55   2                       case 0xFF:      //舵机复位                     
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 2   
+
+  56   2                                                                                              ucBluetoothData = 0x02;//避免一直触发
+  57   2                                                                                              SEH_count = 11;           //保持正常姿态
+  58   2                                                                                              SEV_count = 3;            
+  59   2                                                                                              count = 0;
+  60   2                                                                                              break;
+  61   2                                               
+  62   2                       case 0x50:  //舵机向上转
+  63   2                                                                                      ucBluetoothData = 0x02;//避免一直触发                                                   
+  64   2                                                                                       SEV_count--;
+  65   2                                                                                              if(SEV_count <= 3)
+  66   2                                                                                              {
+  67   3                                                                                                      SEV_count = 3;  
+  68   3                                                                                              }
+  69   2                                                                                       //SEV_count = 3;       
+  70   2                                                                                       count = 0;
+  71   2                                                                                       break;  
+  72   2                       case 0x53:      //舵机向下转           
+  73   2                                                                                              ucBluetoothData = 0x02;//避免一直触发   
+  74   2                                                                                              count = 0;                                                                      
+  75   2                                                                              SEV_count++;
+  76   2                                                                                              if(SEV_count >= 9)
+  77   2                                                                                              {
+  78   3                                                                                                              SEV_count = 9;    
+  79   3                                                                                              }
+  80   2                                                                                              //SEV_count=9;
+  81   2                                                                                      
+  82   2                                                                                              break;
+  83   2                         
+  84   2                       case 0x51:       //舵机向左转
+  85   2                                                                                              ucBluetoothData = 0x02;//避免一直触发                                                                           
+  86   2                                                                                          SEH_count--;
+  87   2                                                                                                      if(SEH_count <= 4)
+  88   2                                                                                                      {
+  89   3                                                                                                                      SEH_count = 4;   
+  90   3                                                                                                      }
+  91   2                                                                                              //SEH_count=4;
+  92   2                                                                                              count = 0;
+  93   2                                                                                              break;
+  94   2                         
+  95   2                       case 0x52:       //舵机向右转
+  96   2                                                                                              ucBluetoothData = 0x02;//避免一直触发                                                                   
+  97   2                                                                                       SEH_count++;
+  98   2                                                                                                      if(SEH_count >= 25)
+  99   2                                                                                                      {
+ 100   3                                                                                                                      SEH_count = 25;  
+ 101   3                                                                                                      }
+ 102   2                                                                                       //SEH_count=25;
+ 103   2                                                         count = 0;
+ 104   2                                                                                       break;
+ 105   2              
+ 106   2                       case 0x4A:  //左灯亮 
+ 107   2                                                                                      ucBluetoothData = 0x02;//避免一直触发
+ 108   2                                                                                      if(LED_L==1)
+ 109   2                                                                                      { 
+ 110   3                                                                                              LED_L =0;
+ 111   3                                                                                      }else
+ 112   2                                                                                      {
+ 113   3                                                                                        LED_L =1;
+ 114   3                                                                                      }
+ 115   2                                                                                       break;
+ 116   2              
+ 117   2                               case 0x4B:  //右灯亮 
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 3   
+
+ 118   2                                                                                      ucBluetoothData = 0x02;//避免一直触发                                                                   
+ 119   2                                                                                       if(LED_R==1)
+ 120   2                                                                                      { 
+ 121   3                                                                                              LED_R = 0;
+ 122   3                                                                                      }else
+ 123   2                                                                                      {
+ 124   3                                                                                        LED_R =1;
+ 125   3                                                                                      }
+ 126   2                                                                                      break;
+ 127   2              
+ 128   2                                case 0x4E:  //全亮 
+ 129   2                                                                                      ucBluetoothData = 0x02;//避免一直触发                                                           
+ 130   2                                                                                       if(LED_R==0&&LED_L==0)
+ 131   2                                                                                      { 
+ 132   3                                                                                              LED_R = 1;
+ 133   3                                                                                              LED_L = 1;
+ 134   3                                                                                      }else
+ 135   2                                                                                      {
+ 136   3                                                                                        LED_R =0;
+ 137   3                                                                                        LED_L =0;
+ 138   3                                                                                      }
+ 139   2                                                                                      break;
+ 140   2              
+ 141   2                                case 0x4C:  //左灯闪烁 
+ 142   2                                                                                      ucBluetoothData = 0x02;//避免一直触发
+ 143   2                                                                                      
+ 144   2                                                                                      while(count1<=5)
+ 145   2                                                                                      { count1++;
+ 146   3                                                                                        LED_L =0;
+ 147   3                                                                                        delay(500);
+ 148   3                                                                                        LED_L =1;
+ 149   3                                                                                        delay(500);
+ 150   3                                                                                      }
+ 151   2                                                                                        count1=0;                                                                     
+ 152   2                                                                                        LED_L =1;                                                                     
+ 153   2                                                                                                                                                                         
+ 154   2                                                                                       break;
+ 155   2                               case 0x4F: //全闪烁 
+ 156   2                                                                                      ucBluetoothData = 0x02;//避免一直触发
+ 157   2                                                                                      
+ 158   2                                                                                      while(count1<=5)
+ 159   2                                                                                      { count1++;
+ 160   3                                                                                        LED_R =0;
+ 161   3                                                                                        LED_L =0;
+ 162   3                                                                                       
+ 163   3                                                                                        delay(500);
+ 164   3                                                                                        LED_L =1;
+ 165   3                                                                                         LED_R =1;
+ 166   3                                                                                        delay(500);
+ 167   3                                                                                      }
+ 168   2                                                                                        count1=0;                                                                     
+ 169   2                                                                                        LED_L =1;     
+ 170   2                                                                                         LED_R =1;                                                            
+ 171   2                                                                                                                                                                         
+ 172   2                                                                                       break;
+ 173   2              
+ 174   2                                case 0x4D:  //右灯闪烁 
+ 175   2                                                                                      ucBluetoothData = 0x02;//避免一直触发
+ 176   2                                                                                      
+ 177   2                                                                                      while(count2<=5)
+ 178   2                                                                                      { count2++;
+ 179   3                                                                                        LED_R =0;
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 4   
+
+ 180   3                                                                                        delay(500);
+ 181   3                                                                                        LED_R =1;
+ 182   3                                                                                        delay(500);
+ 183   3                                                                                      }
+ 184   2                                                                                        count2=0;                                                                     
+ 185   2                                                                                        LED_R =1;                                                                                                                                                                                                                                
+ 186   2                                                                                       break;
+ 187   2              
+ 188   2                               case 0x41:  //前进                                                                                             
+ 189   2                                              ucBluetoothData = 0x02;//避免一直触发
+ 190   2                                              go_forward();                                
+ 191   2                                              break;
+ 192   2                        case 0x42  : //左转                                   
+ 193   2                                          ucBluetoothData = 0x02;//避免一直触发
+ 194   2                                              turn_left();                               
+ 195   2                                              break;
+ 196   2                        case 0x44: //右转                                     
+ 197   2                                              ucBluetoothData = 0x02;//避免一直触发
+ 198   2                                              turn_right();
+ 199   2                                              break;
+ 200   2                         case 0x45 : //后退                                                                                                                           
+ 201   2                                           ucBluetoothData = 0x02;//避免一直触发
+ 202   2                                              fall_back();                               
+ 203   2                                              break;
+ 204   2                         case 0x43 :   //停止
+ 205   2                                              ucBluetoothData = 0x02;//避免一直触发
+ 206   2                                              stop();                                       
+ 207   2                                              break;
+ 208   2                          default:     
+ 209   2                                                                                      break; 
+ 210   2          }               
+ 211   1      }
+ 212          void T0_time() interrupt 1
+ 213          {
+ 214   1              TF0 = 0;//清除中断标志
+ 215   1              TR0 = 0;//关定时器
+ 216   1             
+ 217   1          //舵机1
+ 218   1          if(count <= SEH_count) //控制占空比左右
+ 219   1          {
+ 220   2              //如果count的计数小于（5-25）也就是0.5ms-2.5ms则这段小t周期持续高电平。产生方波
+ 221   2              SEH_PWM = 1;
+ 222   2          }
+ 223   1          else
+ 224   1          {
+ 225   2              SEH_PWM = 0;
+ 226   2          }
+ 227   1          //舵机2
+ 228   1          if(count <= SEV_count) //控制占空比上下
+ 229   1          {
+ 230   2              SEV_PWM = 1;
+ 231   2          }
+ 232   1          else
+ 233   1          {
+ 234   2              SEV_PWM = 0;
+ 235   2          }
+ 236   1          count++;
+ 237   1          if (count >= 250) //T = 20ms则定时器计数变量清0
+ 238   1          {
+ 239   2              count = 0;
+ 240   2          }
+ 241   1               TH0 = 0xff;   //重装初值0.1ms
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 5   
+
+ 242   1               TL0 = 0xa4;
+ 243   1               TR0 = 1;///开定时器
+ 244   1      
+ 245   1      }
+ 246          
+ 247          void initial_myself()
+ 248          {
+ 249   1              TMOD = 0x01;//设置定时器0为工作方式1
+ 250   1              TH0 = 0xff;
+ 251   1              TL0 = 0xa4;
+ 252   1      
+ 253   1              //配置串口
+ 254   1              SCON = 0x50;//串口工作方式1:10位异位收发（8位数据），波特率可变（由定时器1的溢出率控制）
+ 255   1              TMOD = 0x21;//设置定时器1为工作方式2,8位初值自动重装的8位定时器，设置定时器0为工作方式1
+ 256   1              TH1 = TL1 = 0xfd;
+ 257   1              IP = 0x10;
+ 258   1                      SEH_PWM=0;
+ 259   1                  SEV_PWM=0;
+ 260   1                      stop();                          
+ 261   1              PWM1 = 1;
+ 262   1              PWM2 = 1;
+ 263   1      
+ 264   1      }
+ 265          
+ 266          void initial_peripheral()
+ 267          {
+ 268   1              EA = 1;//开总中断
+ 269   1              ES = 1;//允许串口中断
+ 270   1              ET0 = 1;//允许定时器中断
+ 271   1              TR0 = 1;//启动定时器
+ 272   1              TR1 = 1;//
+ 273   1      }
+ 274          void receive(void) interrupt 4
+ 275          {
+ 276   1      
+ 277   1              if(RI == 1)
+ 278   1              {
+ 279   2                      RI = 0;
+ 280   2                      ucBluetoothData = SBUF;
+ 281   2              }
+ 282   1      
+ 283   1                
+ 284   1      }
+ 285          
+ 286          void delay_long(unsigned int uiDelayLong)
+ 287          {
+ 288   1              unsigned int i;
+ 289   1              unsigned int j;
+ 290   1              for(i = 0 ; i < uiDelayLong ; i++)
+ 291   1              {
+ 292   2                      for(j = 0; j < 500; j++);
+ 293   2              
+ 294   2              }
+ 295   1      
+ 296   1      }
+ 297          void delay(unsigned int xms)
+ 298          {
+ 299   1          unsigned int i;
+ 300   1          unsigned int j;
+ 301   1              for(i =xms ; i > 0 ; i--)
+ 302   1            for(j = 110; j > 0; j--);
+ 303   1      }
+C51 COMPILER V9.01   修改                                                                  06/30/2016 14:47:42 PAGE 6   
+
+ 304          
+ 305          void stop()//停止
+ 306          {
+ 307   1              
+ 308   1              motor_control_1 = 0;
+ 309   1              motor_control_2 = 0;
+ 310   1              motor_control_3 = 0;
+ 311   1              motor_control_4 = 0;
+ 312   1      }
+ 313          void fall_back()
+ 314          {
+ 315   1             
+ 316   1              motor_control_1 = 0;
+ 317   1              motor_control_2 = 1;
+ 318   1              motor_control_3 = 0;
+ 319   1              motor_control_4 = 1;
+ 320   1      }
+ 321          void go_forward()
+ 322          {
+ 323   1              
+ 324   1              motor_control_1 = 1;
+ 325   1              motor_control_2 = 0;
+ 326   1              motor_control_3 = 1;
+ 327   1              motor_control_4 = 0;
+ 328   1      }
+ 329          void turn_left()//左转
+ 330          {
+ 331   1             
+ 332   1              motor_control_1 = 0;
+ 333   1              motor_control_2 = 0;
+ 334   1              motor_control_3 = 1;
+ 335   1              motor_control_4 = 0;
+ 336   1              
+ 337   1      }
+ 338          void turn_right()//右转
+ 339          {
+ 340   1             
+ 341   1              motor_control_1 = 1;
+ 342   1              motor_control_2 = 0;
+ 343   1              motor_control_3 = 0;
+ 344   1              motor_control_4 = 0;
+ 345   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    588    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
